@@ -1,5 +1,10 @@
 require('dotenv').config();
-const { Client, GatewayIntentBits, PermissionsBitField, Collection } = require('discord.js');
+const { Client, GatewayIntentBits, PermissionsBitField, Collection, ActivityType } = require('discord.js');
+const express = require('express');
+
+// Inicialização do Express para rodar na porta 80
+const app = express();
+const port = 80;
 
 // Inicialização do bot
 const client = new Client({
@@ -11,6 +16,14 @@ const blockedChannels = new Collection();
 
 client.on('ready', () => {
     console.log(`Bot ${client.user.tag} está online!`);
+
+    // Definindo um status para o bot
+    client.user.setActivity('Moderando links!', { type: ActivityType.Watching });
+
+    // Inicia o servidor Express na porta 80
+    app.listen(port, () => {
+        console.log(`Servidor rodando na porta ${port}`);
+    });
 });
 
 // Evento para bloquear links
@@ -95,6 +108,11 @@ client.on('ready', async () => {
     });
 
     console.log('Comando /add registrado com sucesso!');
+});
+
+// Rota simples para garantir que o servidor Express está funcionando
+app.get('/', (req, res) => {
+    res.send('Bot está online!');
 });
 
 client.login(process.env.TOKEN);
