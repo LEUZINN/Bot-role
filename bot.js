@@ -1,6 +1,7 @@
 require('dotenv').config();
 const { Client, GatewayIntentBits, PermissionsBitField, Collection, ActivityType } = require('discord.js');
 const express = require('express');
+const fs = require('fs');
 
 // Inicialização do Express para rodar na porta 80
 const app = express();
@@ -11,9 +12,15 @@ const client = new Client({
     intents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessages]
 });
 
-// Coleção para armazenar os IDs dos canais bloqueados
-const blockedChannels = new Collection();
+// Carregar os canais bloqueados do arquivo JSON
+let blockedChannels = require('./blockedChannels.json');
 
+// Função para salvar o arquivo JSON com os canais bloqueados
+const saveBlockedChannels = () => {
+    fs.writeFileSync('./blockedChannels.json', JSON.stringify(blockedChannels, null, 2));
+};
+
+// Inicia o servidor Express na porta 80
 client.on('ready', () => {
     console.log(`Bot ${client.user.tag} está online!`);
 
@@ -24,6 +31,11 @@ client.on('ready', () => {
     app.listen(port, () => {
         console.log(`Servidor rodando na porta ${port}`);
     });
+
+    // Manter o bot ativo a cada minuto (ping)
+    setInterval(() => {
+        console.log('Bot está ativo');
+    }, 1000 * 60); // Loga a cada minuto
 });
 
 // Evento para bloquear links
@@ -32,19 +44,13 @@ client.on('messageCreate', async (message) => {
     if (message.author.bot) return;
 
     // Verificar se o canal está bloqueado
-    const isBlockedChannel = blockedChannels.has(message.channel.id);
-    if (isBlockedChannel) {
+    if (blockedChannels.includes(message.channel.id)) {
         const linkRegex = /(https?:\/\/[^\s]+)/g;
 
         // Verificar se a mensagem contém um link
         if (linkRegex.test(message.content)) {
-            // Se o usuário for administrador
+            // Ignorar mensagens de admins
             if (message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-                // Responder apenas para o autor da mensagem (usando uma mensagem efêmera)
-                await message.reply({
-                    content: `Links não são permitidos neste canal. Você é administrador e pode ignorar esta regra.`,
-                    ephemeral: true // Apenas o autor da mensagem verá isso
-                });
                 return;
             }
 
@@ -73,8 +79,9 @@ client.on('interactionCreate', async (interaction) => {
         }
 
         // Adicionar o canal à lista de bloqueados
-        if (!blockedChannels.has(channel.id)) {
-            blockedChannels.set(channel.id, channel.name);
+        if (!blockedChannels.includes(channel.id)) {
+            blockedChannels.push(channel.id);
+            saveBlockedChannels();  // Salvar no arquivo JSON
             return interaction.reply({
                 content: `Canal **${channel.name}** foi adicionado à lista de canais com bloqueio de links.`,
                 ephemeral: true
@@ -113,6 +120,15 @@ client.on('ready', async () => {
 // Rota simples para garantir que o servidor Express está funcionando
 app.get('/', (req, res) => {
     res.send('Bot está online!');
+});
+
+// Reconectar automaticamente caso o bot perca a conexão com o Discord
+client.on('disconnect', () => {
+    console.log('Bot foi desconectado, tentando reconectar...');
+});
+
+client.on('reconnecting', () => {
+    console.log('Bot tentando reconectar...');
 });
 
 client.login(process.env.TOKEN);
