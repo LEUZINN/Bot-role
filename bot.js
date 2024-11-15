@@ -25,7 +25,7 @@ client.on('ready', () => {
     console.log(`Bot ${client.user.tag} está online!`);
 
     // Definindo um status para o bot
-    client.user.setActivity('Moderando links!', { type: ActivityType.Watching });
+    client.user.setActivity('Molestando!', { type: ActivityType.Watching });
 
     // Inicia o servidor Express na porta 80
     app.listen(port, () => {
